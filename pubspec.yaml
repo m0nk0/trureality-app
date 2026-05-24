@@ -12,11 +12,14 @@ dependencies:
   cupertino_icons: ^1.0.8
   http: ^1.2.1
   speech_to_text: ^7.4.0  # ✅ Новая версия с поддержкой новых API
+  html: ^0.15.6
+  flutter_dotenv: ^6.0.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
-
 flutter:
   uses-material-design: true
+  assets:
+    - .env

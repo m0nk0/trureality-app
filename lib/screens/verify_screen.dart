@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../models/verification_result.dart';
-import '../widgets/verification_indicator.dart';
 import '../services/ai_service.dart';
 
 class VerifyScreen extends StatefulWidget {
@@ -12,20 +11,18 @@ class VerifyScreen extends StatefulWidget {
 }
 
 class _VerifyScreenState extends State<VerifyScreen> {
-  // 🎛️ Режим ввода
+  // 🎛️ Режим ввода: 'text', 'voice' или 'url'
   String _inputMode = 'text';
+  
   final TextEditingController _textController = TextEditingController();
-
-  // 🎤 Голосовой ввод
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isListening = false;
   bool _speechAvailable = false;
 
-  // 📊 Результат
   VerificationResult? _result;
   bool _isChecking = false;
 
-  // Твой кастомный цвет для текстов
+  // Твой кастомный серый
   final Color customGrey = const Color.fromRGBO(189, 189, 189, 1);
 
   @override
@@ -42,13 +39,6 @@ class _VerifyScreenState extends State<VerifyScreen> {
     if (mounted) setState(() {});
   }
 
-  void _toggleMode() {
-    setState(() {
-      _inputMode = _inputMode == 'text' ? 'voice' : 'text';
-      if (_isListening) _speech.stop();
-    });
-  }
-
   void _startListening() async {
     if (!_speechAvailable) return;
     await _speech.listen(
@@ -63,20 +53,19 @@ class _VerifyScreenState extends State<VerifyScreen> {
       listenFor: const Duration(seconds: 30),
       pauseFor: const Duration(seconds: 2),
     );
-    if (mounted) setState(() => _isListening = true);
+    setState(() => _isListening = true);
   }
 
   void _stopListening() {
     _speech.stop();
-    if (mounted) setState(() => _isListening = false);
+    setState(() => _isListening = false);
   }
 
   Future<void> _checkStatement() async {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
-
+    
     if (AiService.apiKey == "YOUR_API_KEY_HERE") {
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('⚠️ Вставьте API ключ в ai_service.dart')),
       );
@@ -146,7 +135,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 🎛️ Переключатель
+              // 🎛️ Переключатель режима ввода (3 кнопки)
               Container(
                 decoration: BoxDecoration(
                   color: Colors.grey[900],
@@ -156,17 +145,20 @@ class _VerifyScreenState extends State<VerifyScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: _buildModeTab('text', 'Текст', Icons.keyboard, _inputMode == 'text'),
+                      child: _buildModeTab('text', 'Текст', Icons.edit, _inputMode == 'text'),
                     ),
                     Expanded(
                       child: _buildModeTab('voice', 'Голос', Icons.mic, _inputMode == 'voice'),
+                    ),
+                    Expanded(
+                      child: _buildModeTab('url', 'Ссылка', Icons.link, _inputMode == 'url'),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 20),
 
-              // 📝 Поле ввода
+              // 📝 Поле ввода: Текст
               if (_inputMode == 'text')
                 TextField(
                   controller: _textController,
@@ -180,11 +172,13 @@ class _VerifyScreenState extends State<VerifyScreen> {
                       borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide.none,
                     ),
+                    prefixIcon: const Icon(Icons.edit_outlined, color: Color(0xFF00D4AA)),
                   ),
                   maxLines: 4,
                   textInputAction: TextInputAction.newline,
                 ),
 
+              // 📝 Поле ввода: Голос
               if (_inputMode == 'voice')
                 Column(
                   children: [
@@ -200,6 +194,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
                           borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide.none,
                         ),
+                        prefixIcon: const Icon(Icons.mic_none, color: Color(0xFF00D4AA)),
                       ),
                       maxLines: 4,
                     ),
@@ -238,6 +233,34 @@ class _VerifyScreenState extends State<VerifyScreen> {
                         ),
                       ),
                   ],
+                ),
+
+              // 🔗 Поле ввода: Ссылка
+              if (_inputMode == 'url')
+                TextField(
+                  controller: _textController,
+                  keyboardType: TextInputType.url,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'https://...',
+                    hintStyle: TextStyle(color: customGrey),
+                    filled: true,
+                    fillColor: Colors.grey[900],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    prefixIcon: const Icon(Icons.link, color: Color(0xFF00D4AA)),
+                    suffixIcon: _textController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, color: Colors.grey),
+                            onPressed: () => _textController.clear(),
+                          )
+                        : null,
+                  ),
+                  maxLines: 1,
+                  textInputAction: TextInputAction.go,
+                  onSubmitted: (_) => _isChecking ? null : _checkStatement(),
                 ),
 
               const SizedBox(height: 24),
@@ -301,22 +324,24 @@ class _VerifyScreenState extends State<VerifyScreen> {
                         const SizedBox(height: 12),
                         Text(
                           _result!.explanation!,
-                          style: TextStyle(color: customGrey, fontSize: 14, height: 1.4),
+                          style: const TextStyle(color: Color.fromRGBO(189, 189, 189, 1), fontSize: 14, height: 1.4),
                         ),
                       ],
                       if (_result!.sources.isNotEmpty) ...[
                         const SizedBox(height: 12),
-                        Text('Источники:', style: TextStyle(color: customGrey, fontWeight: FontWeight.w600)),
+                        const Text('Источники:', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
                         ..._result!.sources.map((s) => Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.link, size: 14, color: Color(0xFF00D4AA)),
-                              const SizedBox(width: 6),
-                              Text(s, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-                            ],
-                          ),
-                        )),
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.link, size: 14, color: Color(0xFF00D4AA)),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(s, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                                  ),
+                                ],
+                              ),
+                            )),
                       ],
                     ],
                   ),
@@ -335,7 +360,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
                   children: [
                     _ExampleChip('Земля плоская', _textController),
                     _ExampleChip('Вода кипит при 100°C', _textController),
-                    _ExampleChip('Кофе полезен для сердца', _textController),
+                    _ExampleChip('https://ru.wikipedia.org/wiki/Кофе', _textController),
                   ],
                 ),
               ],
@@ -348,7 +373,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
 
   Widget _buildModeTab(String mode, String label, IconData icon, bool isSelected) {
     return GestureDetector(
-      onTap: _toggleMode,
+      onTap: () => setState(() => _inputMode = mode),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(

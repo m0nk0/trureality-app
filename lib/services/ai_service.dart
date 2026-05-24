@@ -1,37 +1,43 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/verification_result.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AiService {
-  // ⚠️ ВСТАВЬ СЮДА СВОИ ДАННЫЕ
-  static const String apiKey = String.fromEnvironment('YANDEX_API_KEY', defaultValue: 'YOUR_API_KEY_HERE'); // Твой API-ключ
-  static const String folderId = "b1g9f0d2b33nco43vqg3";          // Твой Folder ID
-
+  // ⚠️ Твои данные (или используй .env)
+  static String get apiKey => dotenv.env['YANDEX_API_KEY'] ?? ''; 
+  static const String folderId = "b1g9f0d2b33nco43vqg3";
   static const String apiUrl = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion";
 
-  static const String systemPrompt = '''
-Ты — эксперт по проверке фактов. Пользователь может говорить голосом, поэтому текст может содержать слова-паразиты ("э", "ну", "типа") или обрывки фраз.
+  /// 🔍 Основной метод проверки
+  /// [input] - это может быть утверждение пользователя ИЛИ текст статьи/ссылки
+  static Future<VerificationResult> checkStatement(String input) async {
+    
+    // 🧠 Умный промпт для авто-поиска фактов
+    final systemPrompt = '''
+Ты — эксперт по проверке фактов и аналитик данных. Тебе на вход подается текст (это может быть утверждение пользователя или полный текст статьи).
+
 Твоя задача:
-1. Проигнорировать речевой шум и выделить СУТЬ утверждения.
-2. Проанализировать факт и вернуть СТРОГО JSON без markdown-тегов.
+1. Проанализировать входной текст.
+2. Если пользователь задал КОНКРЕТНЫЙ вопрос (например, "Правда ли, что Земля плоская?") — проверь только его.
+3. Если конкретный вопрос НЕ задан (пользователь просто ввел текст или контент статьи):
+   - Выдели 2-3 самых главных факта/тезиса из текста (сжми информацию).
+   - Проверь достоверность этих ключевых тезисов.
+   - Верни общий вердикт по тексту.
 
-Допустимые статусы (status):
-- "verified" (истина)
-- "disputed" (ложь)
-- "pending" (мнение/недостаточно данных)
-
-Формат ответа:
+Формат ответа (СТРОГО JSON без markdown):
 {
-  "status": "verified",
-  "explanation": "Краткое объяснение на русском языке.",
+  "status": "verified" | "disputed" | "pending",
+  "summary": "Краткое содержание (сжатие) текста, если он длинный. Если это один факт — дублируй его суть.",
+  "explanation": "Развернутая проверка фактов. Если ты выделял несколько тезисов — проверь каждый.",
   "sources": ["Надежный источник 1", "Надежный источник 2"]
 }
-''';
 
-  static Future<VerificationResult> checkStatement(String statement) async {
-    if (apiKey == "YOUR_API_KEY_HERE") {
-      throw Exception('API ключ не установлен');
-    }
+Правила:
+- "verified" — факты подтверждены.
+- "disputed" — в тексте есть ложь или фейки.
+- "pending" — это мнение, прогноз или информации недостаточно.
+''';
 
     try {
       final response = await http.post(
@@ -45,11 +51,11 @@ class AiService {
           "completionOptions": {
             "stream": false,
             "temperature": 0.1,
-            "maxTokens": 1000
+            "maxTokens": 2000 // Увеличили лимит, чтобы ИИ мог "сжать" текст
           },
           "messages": [
             {"role": "system", "text": systemPrompt},
-            {"role": "user", "text": statement}
+            {"role": "user", "text": input}
           ]
         }),
       );
@@ -66,19 +72,23 @@ class AiService {
         final Map<String, dynamic> data = jsonDecode(cleanJson);
 
         return VerificationResult(
-          statement: statement,
+          statement: input.length > 100 ? "${input.substring(0, 100)}..." : input, // Обрезаем длинный ввод для отображения
           status: _parseStatus(data['status']),
-          explanation: data['explanation'] ?? 'Нет объяснения',
+          explanation: data['explanation'] ?? data['summary'] ?? 'Нет объяснения',
           sources: List<String>.from(data['sources'] ?? []),
         );
       } else {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
+        return VerificationResult(
+          statement: input,
+          status: VerificationStatus.pending,
+          explanation: 'Ошибка сервера: ${response.statusCode}',
+        );
       }
     } catch (e) {
       return VerificationResult(
-        statement: statement,
+        statement: input,
         status: VerificationStatus.pending,
-        explanation: 'Ошибка: $e',
+        explanation: 'Ошибка соединения: $e',
       );
     }
   }
