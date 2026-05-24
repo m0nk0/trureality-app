@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CrossVerificationSimulation extends StatefulWidget {
   const CrossVerificationSimulation({super.key});
@@ -9,52 +10,107 @@ class CrossVerificationSimulation extends StatefulWidget {
 
 class _CrossVerificationSimulationState extends State<CrossVerificationSimulation> {
   int _confirmedCount = 0;
-  bool _showVerdict = false;
+  bool _hasVoted = false;
+  bool _isThresholdReached = false;
+  final int _threshold = 70; // Порог для верификации
   final List<Map<String, dynamic>> _verifiers = [];
+  bool _isSimulating = true;
 
   @override
   void initState() {
     super.initState();
-    _runSimulation();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedCount = prefs.getInt('cv_count') ?? 0;
+    final savedVoted = prefs.getBool('cv_voted') ?? false;
+
+    if (mounted) {
+      setState(() {
+        _confirmedCount = savedCount;
+        _hasVoted = savedVoted;
+        _isThresholdReached = _confirmedCount >= _threshold;
+        _isSimulating = savedCount == 0;
+      });
+    }
+
+    if (savedCount == 0 && mounted) {
+      _runSimulation();
+    }
   }
 
   Future<void> _runSimulation() async {
-    // 1. Появление поста
     await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
 
-    // 2. Пошаговая "верификация" (симуляция прихода 100 пользователей)
-    for (int i = 1; i <= 100; i++) {
-      await Future.delayed(const Duration(milliseconds: 40)); // ~4 секунды на все 100
+    // 🛑 Считаем только до (порог - 1), чтобы ждать твой голос
+    final stopAt = _threshold - 1;
+    
+    for (int i = _confirmedCount + 1; i <= stopAt; i++) {
+      await Future.delayed(const Duration(milliseconds: 70));
       if (!mounted) return;
+      
       setState(() {
         _confirmedCount = i;
-        // Показываем только первые 12 аватаров для производительности
         if (_verifiers.length < 12) {
           _verifiers.add({
-            'rating': 85 + (i % 15), // Рейтинг от 85 до 99
-            'initial': String.fromCharCode(65 + (i % 26)), // A-Z
+            'rating': 85 + (i % 15),
+            'initial': String.fromCharCode(65 + (i % 26)),
           });
         }
       });
     }
-
-    // 3. Задержка перед вердиктом
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (mounted) setState(() => _showVerdict = true);
+    // Останавливаем симуляцию и разблокируем кнопку
+    if (mounted) setState(() => _isSimulating = false);
   }
 
-  void _replay() {
+  Future<void> _userVote() async {
+    if (_hasVoted || _isSimulating) return;
+    
     setState(() {
-      _confirmedCount = 0;
-      _showVerdict = false;
-      _verifiers.clear();
+      _hasVoted = true;
+      _confirmedCount++; // Твой голос = решающий +1
+      if (_verifiers.length < 12) {
+        _verifiers.insert(0, {'rating': 95, 'initial': 'Я'});
+      }
+      
+      if (_confirmedCount >= _threshold) {
+        _isThresholdReached = true;
+      }
     });
-    _runSimulation();
+    await _saveData();
+  }
+
+  Future<void> _saveData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('cv_count', _confirmedCount);
+    await prefs.setBool('cv_voted', _hasVoted);
+  }
+
+  Future<void> _resetSimulation() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('cv_count');
+    await prefs.remove('cv_voted');
+    
+    if (mounted) {
+      setState(() {
+        _confirmedCount = 0;
+        _hasVoted = false;
+        _isThresholdReached = false;
+        _verifiers.clear();
+        _isSimulating = true;
+      });
+      _runSimulation();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final progress = _confirmedCount / 100;
+    final isGreen = _isThresholdReached;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0F1115),
       appBar: AppBar(
@@ -62,11 +118,12 @@ class _CrossVerificationSimulationState extends State<CrossVerificationSimulatio
         backgroundColor: const Color(0xFF0F1115),
         elevation: 0,
         actions: [
+          // 🔄 Кнопка "Повторить"
           TextButton.icon(
-            onPressed: _replay,
+            onPressed: _resetSimulation,
             icon: const Icon(Icons.replay, color: Color(0xFF00D4AA)),
             label: const Text('Повторить', style: TextStyle(color: Color(0xFF00D4AA))),
-          )
+          ),
         ],
       ),
       body: SafeArea(
@@ -83,9 +140,9 @@ class _CrossVerificationSimulationState extends State<CrossVerificationSimulatio
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Colors.grey[800]!),
                 ),
-                child: Column(
+                child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: [
                     Text('🔍 Утверждение:', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w600)),
                     SizedBox(height: 8),
                     Text(
@@ -97,23 +154,23 @@ class _CrossVerificationSimulationState extends State<CrossVerificationSimulatio
               ),
               const SizedBox(height: 20),
 
-              // 📊 Счётчик и прогресс
+              // 📊 Прогресс + Счётчик
               Row(
                 children: [
                   SizedBox(
                     width: 20, height: 20,
                     child: CircularProgressIndicator(
-                      value: _confirmedCount / 100,
+                      value: progress,
                       strokeWidth: 2,
-                      color: _confirmedCount >= 100 ? const Color(0xFF00D4AA) : Colors.amber,
+                      color: isGreen ? const Color(0xFF00D4AA) : Colors.amber,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Подтверждено: $_confirmedCount / 100 независимых экспертов',
+                      '$_confirmedCount / 100 подтверждений',
                       style: TextStyle(
-                        color: _confirmedCount >= 100 ? const Color(0xFF00D4AA) : Colors.amber,
+                        color: isGreen ? const Color(0xFF00D4AA) : Colors.amber,
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                       ),
@@ -122,24 +179,46 @@ class _CrossVerificationSimulationState extends State<CrossVerificationSimulatio
                 ],
               ),
               const SizedBox(height: 8),
-
-              // 📈 Прогресс-бар
               ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: LinearProgressIndicator(
-                  value: _confirmedCount / 100,
+                  value: progress,
                   minHeight: 8,
                   backgroundColor: Colors.grey[800],
                   valueColor: AlwaysStoppedAnimation<Color>(
-                    _confirmedCount >= 100 ? const Color(0xFF00D4AA) : Colors.amber,
+                    isGreen ? const Color(0xFF00D4AA) : Colors.amber,
                   ),
                 ),
               ),
               const SizedBox(height: 20),
 
+              // 🗳️ Кнопка голосования
+              ElevatedButton(
+                onPressed: (_hasVoted || _isSimulating) ? null : _userVote,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _hasVoted ? Colors.grey[800] : const Color(0xFF00D4AA),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: _hasVoted
+                    ? const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.check_circle, color: Colors.white, size: 20),
+                          SizedBox(width: 8),
+                          Text('Ваш голос учтён', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                        ],
+                      )
+                    : const Text(
+                        '✅ Я подтверждаю этот факт',
+                        style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+              ),
+              const SizedBox(height: 20),
+
               // 👥 Сетка верификаторов
               Text(
-                'Последние подтвердившие:',
+                'Подтвердили эксперты:',
                 style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 8),
@@ -151,9 +230,9 @@ class _CrossVerificationSimulationState extends State<CrossVerificationSimulatio
               const SizedBox(height: 24),
 
               // ✅ Финальный вердикт
-              if (_showVerdict)
+              if (_isThresholdReached)
                 AnimatedOpacity(
-                  opacity: _showVerdict ? 1.0 : 0.0,
+                  opacity: _isThresholdReached ? 1.0 : 0.0,
                   duration: const Duration(milliseconds: 600),
                   child: Container(
                     padding: const EdgeInsets.all(16),
@@ -164,20 +243,20 @@ class _CrossVerificationSimulationState extends State<CrossVerificationSimulatio
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.shield_rounded, color: Color(0xFF00D4AA), size: 24),
-                        const SizedBox(width: 12),
+                      children: const [
+                        Icon(Icons.shield_rounded, color: Color(0xFF00D4AA), size: 24),
+                        SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
+                            children: [
                               Text(
                                 '✅ Подтверждено сообществом',
                                 style: TextStyle(color: Color(0xFF00D4AA), fontSize: 16, fontWeight: FontWeight.bold),
                               ),
                               SizedBox(height: 6),
                               Text(
-                                '100 независимых пользователей с рейтингом правды ≥85 подтвердили факт. Информация помечена как достоверная.',
+                                'Порог в 70 независимых подтверждений достигнут. Информация помечена как достоверная.',
                                 style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
                               ),
                             ],
