@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../models/verification_result.dart';
 import '../services/ai_service.dart';
+import '../simulation_screen.dart'; // или '../screens/simulation_screen.dart', если файл в другой папке
 
 class VerifyScreen extends StatefulWidget {
   const VerifyScreen({super.key});
@@ -121,14 +122,51 @@ class _VerifyScreenState extends State<VerifyScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0F1115),
       appBar: AppBar(
-        title: const Text('TrueTalk: Проверка фактов'),
-        backgroundColor: const Color(0xFF0F1115),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+  title: const Text('TrueTalk: Проверка фактов'),
+  backgroundColor: const Color(0xFF0F1115),
+  elevation: 0,
+  leading: IconButton(
+    icon: const Icon(Icons.arrow_back, color: Colors.white),
+    onPressed: () => Navigator.pop(context),
+  ),
+  actions: [
+    // 🔲 Квадратная кнопка "Симуляция" с навигацией
+    GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const SimulationScreen(), // ✅ Переход на lib/simulation_screen.dart
+          ),
+        );
+      },
+      child: Container(
+        width: 140,
+        height: 40,
+        margin: const EdgeInsets.only(right: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF00D4AA),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.arrow_forward, color: Colors.black, size: 18),
+            const SizedBox(width: 6),
+            const Text(
+              'Симуляция',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ),
+    ),
+  ],
+),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
