@@ -3,6 +3,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../models/verification_result.dart';
 import '../services/ai_service.dart';
 import '../simulation_screen.dart'; // или '../screens/simulation_screen.dart', если файл в другой папке
+import '../cross_verification_simulation.dart'; 
 
 class VerifyScreen extends StatefulWidget {
   const VerifyScreen({super.key});
@@ -130,18 +131,50 @@ class _VerifyScreenState extends State<VerifyScreen> {
     onPressed: () => Navigator.pop(context),
   ),
   actions: [
-    // 🔲 Квадратная кнопка "Симуляция" с навигацией
+    // 🔲 Кнопка 1: "Симуляция ИИ"
     GestureDetector(
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => const SimulationScreen(), // ✅ Переход на lib/simulation_screen.dart
-          ),
+          MaterialPageRoute(builder: (_) => const SimulationScreen()),
         );
       },
       child: Container(
-        width: 140,
+        width: 130, // Чуть уже, чтобы две кнопки влезли
+        height: 40,
+        margin: const EdgeInsets.only(right: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF00D4AA),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Icon(Icons.auto_awesome, color: Colors.black, size: 16),
+            SizedBox(width: 4),
+            Text(
+              'Симуляция ИИ',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+    
+    // 🔲 Кнопка 2: "Симуляция ПВ" (Перекрёстная верификация)
+    GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const CrossVerificationSimulation()),
+        );
+      },
+      child: Container(
+        width: 130,
         height: 40,
         margin: const EdgeInsets.only(right: 16),
         decoration: BoxDecoration(
@@ -150,14 +183,14 @@ class _VerifyScreenState extends State<VerifyScreen> {
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.arrow_forward, color: Colors.black, size: 18),
-            const SizedBox(width: 6),
-            const Text(
-              'Симуляция',
+          children: const [
+            Icon(Icons.groups, color: Colors.black, size: 16),
+            SizedBox(width: 4),
+            Text(
+              'Симуляция ПВ',
               style: TextStyle(
                 color: Colors.black,
-                fontSize: 14,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
             ),
