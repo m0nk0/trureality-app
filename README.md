@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # truetalk_proto
 
 A new Flutter project.
@@ -15,3 +16,7 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+=======
+# truetalk-proto
+AI-проверка фактов: Flutter + YandexGPT
+>>>>>>> e5dcf7b57bd364fc84ed58d1c1a02f6f72e5378a
