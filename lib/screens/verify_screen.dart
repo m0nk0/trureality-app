@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:url_launcher/url_launcher.dart';
 import '../models/verification_result.dart';
 import '../services/ai_service.dart';
-import '../simulation_screen.dart'; // или '../screens/simulation_screen.dart', если файл в другой папке
-import '../cross_verification_simulation.dart'; 
+import '../services/history_service.dart';
+import 'history_screen.dart';
+import '../simulation_screen.dart';
 
 class VerifyScreen extends StatefulWidget {
   const VerifyScreen({super.key});
@@ -86,6 +88,8 @@ class _VerifyScreenState extends State<VerifyScreen> {
           _result = result;
           _isChecking = false;
         });
+        // 💾 Сохраняем в историю
+        HistoryService.saveVerification(result);
       }
     } catch (e) {
       if (mounted) {
@@ -111,6 +115,82 @@ class _VerifyScreenState extends State<VerifyScreen> {
     _speech.stop();
   }
 
+  // 📚 Показ диалога с источниками + открытие ссылок
+  void _showSourcesDialog() {
+    if (_result == null || _result!.sources.isEmpty) return;
+    
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1C21),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: const [
+            Icon(Icons.source, color: Color(0xFF00D4AA)),
+            SizedBox(width: 8),
+            Text('Источники', style: TextStyle(color: Colors.white, fontSize: 18)),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: _result!.sources.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final source = _result!.sources[index];
+              return Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[900],
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey[800]!),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.link, size: 16, color: Color(0xFF00D4AA)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        source,
+                        style: const TextStyle(color: Colors.white70, fontSize: 13),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.open_in_new, size: 16, color: Color(0xFF00D4AA)),
+                      onPressed: () async {
+                        final uri = Uri.parse(source);
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        } else {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('❌ Не удалось открыть ссылку')),
+                            );
+                          }
+                        }
+                      },
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Закрыть', style: TextStyle(color: Colors.grey)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _textController.dispose();
@@ -123,90 +203,78 @@ class _VerifyScreenState extends State<VerifyScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0F1115),
       appBar: AppBar(
-  title: const Text('TrueTalk: Проверка фактов'),
-  backgroundColor: const Color(0xFF0F1115),
-  elevation: 0,
-  leading: IconButton(
-    icon: const Icon(Icons.arrow_back, color: Colors.white),
-    onPressed: () => Navigator.pop(context),
-  ),
-  actions: [
-    // 🔲 Кнопка 1: "Симуляция ИИ"
-    GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const SimulationScreen()),
-        );
-      },
-      child: Container(
-        width: 130, // Чуть уже, чтобы две кнопки влезли
-        height: 40,
-        margin: const EdgeInsets.only(right: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFF00D4AA),
-          borderRadius: BorderRadius.circular(8),
+        title: const Text('TrueReality: Проверка фактов'),
+        backgroundColor: const Color(0xFF0F1115),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.auto_awesome, color: Colors.black, size: 16),
-            SizedBox(width: 4),
-            Text(
-              'Симуляция ИИ',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+        actions: [
+          // 📜 Кнопка истории
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const HistoryScreen()),
+            ),
+            child: Container(
+              width: 130,
+              height: 40,
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF00D4AA),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.history, color: Colors.black, size: 16),
+                  SizedBox(width: 6),
+                  Text(
+                    'История',
+                    style: TextStyle(color: Colors.black, fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
-    ),
-    
-    // 🔲 Кнопка 2: "Симуляция ПВ" (Перекрёстная верификация)
-    GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const CrossVerificationSimulation()),
-        );
-      },
-      child: Container(
-        width: 130,
-        height: 40,
-        margin: const EdgeInsets.only(right: 16),
-        decoration: BoxDecoration(
-          color: const Color(0xFF00D4AA),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.groups, color: Colors.black, size: 16),
-            SizedBox(width: 4),
-            Text(
-              'Симуляция ПВ',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+          ),
+          
+          // 🔲 Кнопка симуляции
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SimulationScreen()),
+            ),
+            child: Container(
+              width: 130,
+              height: 40,
+              margin: const EdgeInsets.only(right: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF00D4AA),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.auto_awesome, color: Colors.black, size: 16),
+                  SizedBox(width: 6),
+                  Text(
+                    'Симуляция',
+                    style: TextStyle(color: Colors.black, fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    ),
-  ],
-),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 🎛️ Переключатель режима ввода (3 кнопки)
+              // 🎛️ Переключатель режима ввода
               Container(
                 decoration: BoxDecoration(
                   color: Colors.grey[900],
@@ -358,7 +426,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
               const SizedBox(height: 24),
 
               // 📊 Результат
-              if (_result != null)
+              if (_result != null) ...[
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -369,6 +437,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Заголовок с индикатором
                       Row(
                         children: [
                           Container(
@@ -391,6 +460,8 @@ class _VerifyScreenState extends State<VerifyScreen> {
                           ),
                         ],
                       ),
+                      
+                      // Объяснение
                       if (_result!.explanation != null) ...[
                         const SizedBox(height: 12),
                         Text(
@@ -398,26 +469,48 @@ class _VerifyScreenState extends State<VerifyScreen> {
                           style: const TextStyle(color: Color.fromRGBO(189, 189, 189, 1), fontSize: 14, height: 1.4),
                         ),
                       ],
+                      
+                      // 🔘 Кнопка "Подробнее" (если есть источники)
                       if (_result!.sources.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        const Text('Источники:', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
-                        ..._result!.sources.map((s) => Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.link, size: 14, color: Color(0xFF00D4AA)),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(s, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-                                  ),
-                                ],
-                              ),
-                            )),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () => _showSourcesDialog(),
+                            icon: const Icon(Icons.link, size: 18),
+                            label: Text('Подробнее: ${_result!.sources.length} источников'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF00D4AA),
+                              side: const BorderSide(color: Color(0xFF00D4AA)),
+                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
+                        ),
                       ],
                     ],
                   ),
                 ),
+                
+                // 🔄 Кнопка сброса (НОВАЯ)
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _resetScreen,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('🔄 Сбросить и проверить новое'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.grey[400],
+                      side: BorderSide(color: Colors.grey[700]!),
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+              ],
 
+              // 💡 Подсказки, если результата нет
               if (_result == null) ...[
                 const SizedBox(height: 8),
                 Text(

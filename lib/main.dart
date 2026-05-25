@@ -14,7 +14,7 @@ class TrueTalkProto extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'TrueTalk Proto',
+      title: 'TrueReality',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
         primaryColor: const Color(0xFF00D4AA),
