@@ -49,6 +49,11 @@
         <intent>
             <action android:name="android.speech.RecognitionService" />
         </intent>
+        <!-- Для ссылок -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
     </queries>
 
 </manifest>

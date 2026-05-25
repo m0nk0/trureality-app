@@ -49,7 +49,7 @@ class _SimulationScreenState extends State<SimulationScreen> {
       'shares': '9.5K',
     },
     {
-      'author': 'TrueTalk AI',
+      'author': 'TrueReality AI',
       'time': 'сегодня в 17:00',
       'title': '✅ Гибридная верификация завершена',
       'text': 'ИИ провёл предварительный анализ → Сообщество подтвердило факт → Цепочка доверия передала верификацию.\n\nРезультат: 99.2% точности. Информация достоверна.',
@@ -144,7 +144,7 @@ class _SimulationScreenState extends State<SimulationScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0F1115),
       appBar: AppBar(
-        title: const Text('TTrueReality: Демонстрация', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        title: const Text('TrueReality: Демонстрация', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
         backgroundColor: const Color(0xFF0F1115),
         elevation: 0,
         actions: [
@@ -232,17 +232,20 @@ class _SimulationScreenState extends State<SimulationScreen> {
         child: _buildRealisticPost(0)),
       const SizedBox(height: 20),
       if (_aiCheck) _buildLoader('🤖 ИИ анализирует утверждение...', size: 18),
-      if (_aiMarkers)
-        AnimatedOpacity(opacity: 1.0, duration: const Duration(milliseconds: 400),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(5, (i) {
-            final isBad = i == 2;
-            return Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: AnimatedContainer(duration: const Duration(milliseconds: 500),
-              width: isBad ? 56.0 : 40.0, height: isBad ? 56.0 : 40.0,
-              decoration: BoxDecoration(color: isBad ? Colors.redAccent : const Color(0xFF00D4AA), shape: BoxShape.circle, boxShadow: [BoxShadow(color: isBad ? Colors.redAccent.withValues(alpha: 0.5) : const Color(0xFF00D4AA).withValues(alpha: 0.3), blurRadius: 12)])));
-          }))),
+      
       if (_aiVerdict)
         AnimatedOpacity(opacity: 1.0, duration: const Duration(milliseconds: 500),
           child: _buildAlert('❌ ИИ: Утверждение не подтверждается проверенными научными источниками', Colors.redAccent, fontSize: 18)),
+      // 🔴 ИНДИКАТОР ВЕРДИКТА (копия из сценария 1, адаптированная)
+      const SizedBox(height: 20),
+      if (_aiDone)
+        AnimatedOpacity(opacity: 1.0, duration: const Duration(milliseconds: 400),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(5, (i) {
+            final isLit = i == 0; // 🔴 Красный - крайний слева
+            return Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: AnimatedContainer(duration: const Duration(milliseconds: 500),
+              width: isLit ? 56.0 : 40.0, height: isLit ? 56.0 : 40.0,
+              decoration: BoxDecoration(color: isLit ? Colors.redAccent : Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: isLit ? Colors.redAccent.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.1), blurRadius: 12)])));
+          }))),
     ]);
   }
 
@@ -267,6 +270,16 @@ class _SimulationScreenState extends State<SimulationScreen> {
       if (_crossVerdict)
         AnimatedOpacity(opacity: 1.0, duration: const Duration(milliseconds: 500),
           child: _buildAlert('🛡️ Консенсус достигнут! Факт верифицирован сообществом независимых экспертов', const Color(0xFF00D4AA), fontSize: 18)),
+      // 🟢 ИНДИКАТОР ВЕРДИКТА (копия из сценария 1, адаптированная)
+      const SizedBox(height: 20),
+      if (_crossDone)
+        AnimatedOpacity(opacity: 1.0, duration: const Duration(milliseconds: 400),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(5, (i) {
+            final isLit = i == 4; // 🟢 Зелёный - крайний справа
+            return Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: AnimatedContainer(duration: const Duration(milliseconds: 500),
+              width: isLit ? 56.0 : 40.0, height: isLit ? 56.0 : 40.0,
+              decoration: BoxDecoration(color: isLit ? const Color(0xFF00D4AA) : Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: isLit ? const Color(0xFF00D4AA).withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.1), blurRadius: 12)])));
+          }))),
     ]);
   }
 
@@ -289,6 +302,16 @@ class _SimulationScreenState extends State<SimulationScreen> {
       if (_trustVerdict)
         AnimatedOpacity(opacity: 1.0, duration: const Duration(milliseconds: 500),
           child: _buildAlert('🔗 Доверие передано по цепочке. Информация признана достоверной', const Color(0xFF00D4AA), fontSize: 18)),
+      // 🟢 ИНДИКАТОР ВЕРДИКТА (копия из сценария 1, адаптированная)
+      const SizedBox(height: 20),
+      if (_trustDone)
+        AnimatedOpacity(opacity: 1.0, duration: const Duration(milliseconds: 400),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(5, (i) {
+            final isLit = i == 4; // 🟢 Зелёный - крайний справа
+            return Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: AnimatedContainer(duration: const Duration(milliseconds: 500),
+              width: isLit ? 56.0 : 40.0, height: isLit ? 56.0 : 40.0,
+              decoration: BoxDecoration(color: isLit ? const Color(0xFF00D4AA) : Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: isLit ? const Color(0xFF00D4AA).withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.1), blurRadius: 12)])));
+          }))),
     ]);
   }
 
@@ -316,6 +339,16 @@ class _SimulationScreenState extends State<SimulationScreen> {
               SizedBox(height: 6),
               Text('= 99.2% точность', style: TextStyle(color: Color(0xFF00D4AA), fontSize: 20, fontWeight: FontWeight.bold)),
             ]))),
+      // 🟢 ИНДИКАТОР ВЕРДИКТА (копия из сценария 1, адаптированная)
+      const SizedBox(height: 20),
+      if (_hybridDone)
+        AnimatedOpacity(opacity: 1.0, duration: const Duration(milliseconds: 400),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(5, (i) {
+            final isLit = i == 4; // 🟢 Зелёный - крайний справа
+            return Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: AnimatedContainer(duration: const Duration(milliseconds: 500),
+              width: isLit ? 56.0 : 40.0, height: isLit ? 56.0 : 40.0,
+              decoration: BoxDecoration(color: isLit ? const Color(0xFF00D4AA) : Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: isLit ? const Color(0xFF00D4AA).withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.1), blurRadius: 12)])));
+          }))),
     ]);
   }
 
