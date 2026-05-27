@@ -22,12 +22,15 @@ class VerificationIndicator extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: result.statusColor.withValues(alpha: 0.2),
+          // Полупрозрачный фон
+          color: result.statusColor.withValues(alpha: 0.15),
+          // Цветная обводка
           border: Border.all(color: result.statusColor, width: 2),
+          // Неоновое свечение
           boxShadow: [
             BoxShadow(
-              color: result.statusColor.withValues(alpha: 0.3),
-              blurRadius: 8,
+              color: result.statusColor.withValues(alpha: 0.4),
+              blurRadius: 12,
               spreadRadius: 1,
             ),
           ],
@@ -41,12 +44,24 @@ class VerificationIndicator extends StatelessWidget {
     );
   }
 
+  /// 🎯 Возвращает иконку для каждого из 7 статусов
   IconData _iconForStatus(VerificationStatus status) {
     switch (status) {
-      case VerificationStatus.verified: return Icons.check;
-      case VerificationStatus.disputed: return Icons.close;
-      case VerificationStatus.pending: return Icons.hourglass_empty;
-      case VerificationStatus.unknown: return Icons.help_outline;
+      case VerificationStatus.verified:
+        return Icons.check;              // 🟢 Галочка
+      case VerificationStatus.disproven:
+        return Icons.close;              // 🔴 Крестик
+      case VerificationStatus.hypothesis:
+        return Icons.psychology;         // 🟡 Мозг / Теория
+      case VerificationStatus.opinion:
+        return Icons.chat_bubble_outline; // 🔵 Пузырь речи
+      case VerificationStatus.unclear:
+      case VerificationStatus.unknown:
+        return Icons.help_outline;       // ⚪ Вопрос
+      case VerificationStatus.pending:
+        return Icons.hourglass_empty;    // ⏳ Песочные часы
+      default:
+        return Icons.error_outline;      // ⚠️ Фолбэк
     }
   }
 }
